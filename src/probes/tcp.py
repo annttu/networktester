@@ -16,17 +16,59 @@ class TCPClient(probe.ProbeClient):
         self.connection = None
         self.connect()
 
+    def get_responses(self):
+
+        rx, wx, tx = select.select([self.connection], [], [], 0.1)
+
+        if len(rx) == 0:
+            return
+
+        try:
+            response = self.connection.recv(1024)
+            recv_time = time.time()
+        except (socket.gaierror, OSError):
+            logger.exception("Cannot receive message!")
+            return
+
+        if len(response) == 0:
+            logger.error("Got zero size response, connection lost?")
+            return
+
+        try:
+            response = response.decode("utf-8")
+        except UnicodeDecodeError:
+            logger.exception("Got invalid or corrupted message '%s' from server!" % response)
+            return
+
+        try:
+            send_time = float(response)
+        except ValueError:
+            logger.exception("Got invalid or corrupted message '%s' from server!" % response)
+            return
+
+        logger.info("Got Pong message from server in %.2f ms !" % ((recv_time - send_time) * 1000.0,))
+
+        return response
+
     def test(self):
-        msg = "Ping"
+
         self.connect()
         if self.connection:
 
             # TODO: Clear receive buffer first?
 
+            while True:
+                if self.get_responses() is None:
+                    break
+
             send_time = time.time()
 
+            msg = "%s" % send_time
+            msg = msg.encode("utf-8")
+
+
             try:
-                l = self.connection.send(msg.encode("utf-8"))
+                l = self.connection.send(msg)
                 if l != len(msg):
                     logger.error("Cannot send ping message to %s:%s" % (self.address, self.port))
                     self.reconnect()
@@ -42,33 +84,9 @@ class TCPClient(probe.ProbeClient):
                 logger.error("Didn't receive reply from server in %s seconds" % self.timeout)
                 return
 
-            recv_time = time.time()
-
-            try:
-                response = self.connection.recv(1024)
-            except (socket.gaierror, OSError):
-                logger.exception("Cannot receive message!")
-                self.reconnect()
-                return
-
-            if len(response) == 0:
-                logger.error("Got zero size response, connection lost?")
-                self.reconnect()
-                return
-
-            try:
-                response = response.decode("utf-8")
-            except UnicodeDecodeError:
-                logger.exception("Got invalid or corrupted message '%s' from server!" % response)
-                self.reconnect()
-                return
-
-            if response != "Pong":
-                logger.error("Got invalid or corrupted response '%s' from server!" % response)
-                self.reconnect()
-                return
-
-            logger.info("Got Pong message from server in %4.2f ms !" % ((recv_time - send_time) * 1000.0,))
+            while True:
+                if self.get_responses() is None:
+                    break
 
     def connect(self):
         if self.connection is not None:
@@ -110,8 +128,9 @@ class TCPServer(probe.ProbeServer):
     def handle(self, msg, source):
         logger.info("Got message '%s' from %s" % (msg, source.source))
         try:
-            l = source.conn.send("Pong".encode("utf-8"))
-            if l == len("Pong"):
+            # Send message back
+            l = source.conn.send(msg)
+            if l == len(msg):
                 return True
             else:
                 logger.error("Length of send message too short, connection closed?")

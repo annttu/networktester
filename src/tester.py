@@ -18,9 +18,9 @@ def main(address, port):
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
-    p.add_argument("-a", '--server', help="Server address", default="0.0.0.0")
+    p.add_argument("-s", '--server', help="Server address", default="0.0.0.0")
     p.add_argument('-p', '--port', help="Server port", default=5555, type=int)
 
     args = p.parse_args()
 
-    main(address=args.address, port=args.port)
+    main(address=args.server, port=args.port)
