@@ -34,21 +34,29 @@ class TCPClient(probe.ProbeClient):
             logger.error("Got zero size response, connection lost?")
             return
 
+        if b"\x00" not in response:
+            logger.error("Termination character not in message!")
+            return
+
         try:
             response = response.decode("utf-8")
         except UnicodeDecodeError:
             logger.exception("Got invalid or corrupted message '%s' from server!" % response)
             return
 
-        try:
-            send_time = float(response)
-        except ValueError:
-            logger.exception("Got invalid or corrupted message '%s' from server!" % response)
-            return
 
-        logger.info("Got Pong message from server in %.2f ms !" % ((recv_time - send_time) * 1000.0,))
+        responses = response.split("\x00")[:-1]
 
-        return response
+        for response in responses:
+            try:
+                send_time = float(response[:-1])
+            except ValueError:
+                logger.exception("Got invalid or corrupted message '%s' from server!" % response)
+                return
+
+            logger.info("Got Pong message from server in %.2f ms !" % ((recv_time - send_time) * 1000.0,))
+
+        return responses
 
     def test(self):
 
@@ -61,11 +69,8 @@ class TCPClient(probe.ProbeClient):
                 if self.get_responses() is None:
                     break
 
-            send_time = time.time()
-
-            msg = "%s" % send_time
+            msg = "%s\x00" % time.time()
             msg = msg.encode("utf-8")
-
 
             try:
                 l = self.connection.send(msg)
