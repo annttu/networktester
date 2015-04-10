@@ -1,6 +1,6 @@
 #!/bin/bash
 
-P="$(cd "$(dirname "$1")"; pwd)/$(basename "$1")"
+P="$(cd "$(dirname "$0")"; pwd)/"
 cd ${P}/src
 export PYTHONPATH=`pwd`
 
