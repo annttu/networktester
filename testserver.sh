@@ -1,8 +1,7 @@
 #!/bin/bash
 
 P="$(cd "$(dirname "$0")"; pwd)/"
-cd ${P}/src
-export PYTHONPATH=`pwd`
+export PYTHONPATH="${P}/src"
 
-python3 testserver.py $@
+python3 ${P}/src/testserver.py $@
 
