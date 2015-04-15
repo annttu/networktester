@@ -2,20 +2,28 @@ import socket
 import select
 from probes import probe
 import time
-
 import logging
 import logger_utils
 from probes.probe import ClientConnection
 
-logger = logging.getLogger("TCP")
+logger = logging.getLogger("UDP")
 logger.addFilter(logger_utils.Unique())
 
 
-class TCPClient(probe.ProbeClient):
-    def reconnect(self):
-        logger.info("Reconnecting to %s:%s" % (self.address, self.port))
-        self.connection = None
-        self.connect()
+class UDPClient(probe.ProbeClient):
+
+    def connect(self):
+        if self.connection is not None:
+            return
+
+        self.connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # Wait for timeout seconds before timeout, UDP and socket timeouts are not very useful anyway.
+        self.connection.settimeout(self.timeout)
+        # Connect to server
+        try:
+            self.connection.connect((self.address, self.port))
+        except (socket.gaierror, OSError):
+            logger.exception("Cannot connect to server %s:%s" % (self.address, self.port))
 
     def get_responses(self):
 
@@ -94,38 +102,23 @@ class TCPClient(probe.ProbeClient):
                 if self.get_responses() is None:
                     break
 
-    def connect(self):
-        if self.connection is not None:
-            return
-
-        self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # Wait for 5 x timeout (= 30) seconds before timeout
-        self.connection.settimeout(self.timeout * 5)
-        # Connect to server
-        try:
-            self.connection.connect((self.address, self.port))
-        except (socket.gaierror, OSError):
-            logger.exception("Cannot connect to server %s:%s" % (self.address, self.port))
+    def reconnect(self):
+        logger.info("Reconnecting to %s:%s" % (self.address, self.port))
+        self.connection = None
+        self.connect()
 
 
-class TCPServer(probe.ProbeServer):
+class UDPServer(probe.ProbeServer):
     def _init_connection(self):
         if self.socket:
             return
         while not self.socket:
             logger.info("Trying to bind")
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             try:
                 self.socket.bind((self.address, self.port))
             except (socket.gaierror, OSError):
                 logger.error("Cannot bind to %s:%s" % (self.address, self.port))
-                self.socket = None
-                time.sleep(5)
-                continue
-            try:
-                self.socket.listen(5)
-            except (socket.gaierror, OSError):
-                logger.error("Cannot listen on bind address")
                 self.socket = None
                 time.sleep(5)
                 continue
@@ -143,7 +136,7 @@ class TCPServer(probe.ProbeServer):
         logger.debug("Got message '%s' from %s" % (logger_utils.safe_encode(tmp_msg[:-1]), source.source))
         try:
             # Send message back
-            l = source.conn.send(msg)
+            l = source.conn.sendto(msg, (source.source, source.port))
             if l == len(msg):
                 return True
             else:
@@ -155,51 +148,16 @@ class TCPServer(probe.ProbeServer):
             return
 
     def mainloop(self):
-        x = [x.conn for x in self.connections] + [self.socket]
-        rlist, wlist, xlist = select.select(x, [], x)
+        rlist, wlist, xlist = select.select([self.socket], [], [self.socket])
         for conn in rlist:
-            if conn == self.socket:
-                conn, address = self.socket.accept()
-                c = ClientConnection(conn, address)
-                self.connections.append(c)
+            try:
+                msg, addr = conn.recvfrom(1024)
+            except (socket.gaierror, OSError):
+                logger.exception("Failed to receive message from %s" % (addr[0],))
+                continue
+            if len(msg) == 0:
+                logger.error("Got zero length message from %s!" % (addr[0],))
+                continue
             else:
-                # Find connection
-                connection = None
-                for x in self.connections:
-                    if conn == x.conn:
-                        connection = x
-                        break
+                self.handle(msg, ClientConnection(self.socket, addr))
 
-                if not connection:
-                    logger.error("BUG: Cannot find connection from connections!")
-                    continue
-                try:
-                    msg = conn.recv(1024)
-                except (socket.gaierror, OSError):
-                    logger.exception("Failed to receive message from %s" % (connection.source,))
-                    self.close_connection(connection)
-                    continue
-                if len(msg) == 0:
-                    logger.error("Got zero length message from %s!" % (connection.source,))
-                    self.close_connection(connection)
-                    continue
-                else:
-                    self.handle(msg, connection)
-
-        for conn in xlist:
-            if  conn == self.socket:
-                logger.error("Exception occurred in socket, reconnecting")
-                for connection in self.connections:
-                    self.close_connection(connection)
-                self.socket = None
-                self._init_connection()
-            else:
-                for x in self.connections:
-                    if conn == x.conn:
-                        connection = x
-                        break
-
-                if not connection:
-                    logger.error("BUG: Cannot find connection from connections!")
-                    continue
-                self.close_connection(connection)

@@ -18,7 +18,11 @@ class Unique(logging.Filter):
     def __is_first_time(self, rec):
         n = time.time()
         """Emit a message only once in second."""
-        msg = rec.msg %(rec.args)
+        try:
+            msg = rec.msg %(rec.args)
+        except TypeError:
+            # Usually "not enough arguments for format string"
+            return True
         if msg in self.__logged:
             ret = True
             if self.__logged[msg][1] > (n - 1.0):
@@ -34,3 +38,12 @@ class Unique(logging.Filter):
             self.__logged[msg] = [1, time.time()]
 
             return True
+
+
+def safe_encode(msg):
+    """
+    # Safe escape message
+    :param msg: message
+    :return: escaped msg
+    """
+    return msg.encode("unicode_escape").decode("ascii")

@@ -2,7 +2,7 @@
 # encoding: utf-8
 
 
-from probes import tcp
+from probes import tcp, udp
 import logging
 import logger_utils
 import argparse
@@ -13,8 +13,11 @@ logging.getLogger().addFilter(logger_utils.Unique())
 
 def main(address, port):
     t = tcp.TCPServer(address, port)
+    u = udp.UDPServer(address, port)
     t.start()
+    u.start()
     t.join()
+    u.join()
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
@@ -29,7 +32,7 @@ if __name__ == '__main__':
     if args.debug:
         level = logging.DEBUG
 
-    logging.basicConfig(level=level, filename=args.logfile, format='%(asctime)s %(levelname)s: %(message)s',
+    logging.basicConfig(level=level, filename=args.logfile, format='%(asctime)s %(levelname)s %(name)s: %(message)s',
                         datefmt='%d.%m.%Y %H:%M:%S')
 
     main(address=args.address, port=args.port)

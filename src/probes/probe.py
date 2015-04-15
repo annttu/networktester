@@ -10,11 +10,13 @@ import logger_utils
 logger = logging.getLogger("Probe")
 logger.addFilter(logger_utils.Unique())
 
+
 class ClientConnection(object):
     def __init__(self, connection, source):
         self.conn = connection
         self.source = source[0]
         self.port = source[1]
+
 
 class ProbeClient(object):
     __metaclass__ = abc.ABCMeta
@@ -25,6 +27,10 @@ class ProbeClient(object):
         self.connection = None
         self.timeout = timeout
         self.connect()
+
+    @abc.abstractmethod
+    def reconnect(self):
+        pass
 
     @abc.abstractmethod
     def connect(self):
@@ -67,54 +73,12 @@ class ProbeServer(threading.Thread):
     def stop(self):
         self._stop = True
 
+
     def run(self):
         self._init_connection()
         while not self._stop:
-            x = [x.conn for x in self.connections] + [self.socket]
-            rlist, wlist, xlist = select.select(x, [], x)
-            for conn in rlist:
-                if conn == self.socket:
-                    conn, address = self.socket.accept()
-                    c = ClientConnection(conn, address)
-                    self.connections.append(c)
-                else:
-                    # Find connection
-                    connection = None
-                    for x in self.connections:
-                        if conn == x.conn:
-                            connection = x
-                            break
+            self.mainloop()
 
-                    if not connection:
-                        logger.error("BUG: Cannot find connection from connections!")
-                        continue
-                    try:
-                        msg = conn.recv(1024)
-                    except (socket.gaierror, OSError):
-                        logger.exception("Failed to receive message from %s" % (connection.source,))
-                        self.close_connection(connection)
-                        continue
-                    if len(msg) == 0:
-                        logger.error("Got zero length message from %s!" % (connection.source,))
-                        self.close_connection(connection)
-                        continue
-                    else:
-                        self.handle(msg, connection)
-
-            for conn in xlist:
-                if  conn == self.socket:
-                    logger.error("Exception occurred in socket, reconnecting")
-                    for connection in self.connections:
-                        self.close_connection(connection)
-                    self.socket = None
-                    self._init_connection()
-                else:
-                    for x in self.connections:
-                        if conn == x.conn:
-                            connection = x
-                            break
-
-                    if not connection:
-                        logger.error("BUG: Cannot find connection from connections!")
-                        continue
-                    self.close_connection(connection)
+    @abc.abstractmethod
+    def mainloop(self):
+        pass
