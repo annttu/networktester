@@ -2,6 +2,7 @@
 # encoding: utf-8
 import argparse
 import time
+import database
 
 from probes import tcp, udp
 import logging
@@ -36,6 +37,9 @@ if __name__ == '__main__':
     logging.basicConfig(level=level, filename=args.logfile, format='%(asctime)s %(levelname)s %(name)s: %(message)s',
                         datefmt='%d.%m.%Y %H:%M:%S')
 
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
+    logging.getLogger('sqlalchemy.engine.base.Engine').setLevel(logging.WARN)
+    database.DB.connect()
 
     if args.type == 'tcp':
         maintcp(address=args.server, port=args.port)

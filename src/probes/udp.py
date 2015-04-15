@@ -1,5 +1,6 @@
 import socket
 import select
+import database
 from probes import probe
 import time
 import logging
@@ -24,6 +25,16 @@ class UDPClient(probe.ProbeClient):
             self.connection.connect((self.address, self.port))
         except (socket.gaierror, OSError):
             logger.exception("Cannot connect to server %s:%s" % (self.address, self.port))
+        self.save_status("CONNECT", 0.0)
+
+    def save_status(self, status, value):
+        s = database.DB.get_session()
+        t = database.UDPTable()
+        t.status = status
+        t.value = value
+        s.add(t)
+        s.commit()
+        s.close()
 
     def get_responses(self):
 
@@ -63,7 +74,10 @@ class UDPClient(probe.ProbeClient):
                 logger.exception("Got invalid or corrupted message '%s' from server!" % response)
                 return
 
-            logger.info("Got Pong message from server in %.2f ms !" % ((recv_time - send_time) * 1000.0,))
+            t = (recv_time - send_time) * 1000.0
+            self.save_status("OK", t)
+
+            logger.info("Got Pong message from server in %.2f ms !" % (t,))
 
         return responses
 
@@ -104,6 +118,7 @@ class UDPClient(probe.ProbeClient):
 
     def reconnect(self):
         logger.info("Reconnecting to %s:%s" % (self.address, self.port))
+        self.save_status("RECONNECT", 0.0)
         self.connection = None
         self.connect()
 
