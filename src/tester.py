@@ -40,6 +40,7 @@ if __name__ == '__main__':
     logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
     logging.getLogger('sqlalchemy.engine.base.Engine').setLevel(logging.WARN)
     database.DB.connect()
+    database.DB.create_tables()
 
     if args.type == 'tcp':
         maintcp(address=args.server, port=args.port)
