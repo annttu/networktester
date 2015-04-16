@@ -61,7 +61,7 @@ class TCPServer(probe.ProbeServer):
         for conn in rlist:
             if conn == self.socket:
                 conn, address = self.socket.accept()
-                c = ClientConnection(conn, address)
+                c = probe.ClientConnection(conn, address)
                 self.connections.append(c)
             else:
                 # Find connection
