@@ -173,7 +173,7 @@ class UDPServer(probe.ProbeServer):
         for conn in rlist:
             try:
                 msg, addr = conn.recvfrom(1024)
-            except (socket.gaierror, OSError):
+            except (socket.gaierror, OSError, socket.error):
                 logger.exception("Failed to receive message from %s" % (addr[0],))
                 continue
             if len(msg) == 0:

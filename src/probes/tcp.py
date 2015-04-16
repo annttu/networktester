@@ -196,7 +196,7 @@ class TCPServer(probe.ProbeServer):
                     continue
                 try:
                     msg = conn.recv(1024)
-                except (socket.gaierror, OSError):
+                except (socket.gaierror, OSError, socket.error):
                     logger.exception("Failed to receive message from %s" % (connection.source,))
                     self.close_connection(connection)
                     continue
