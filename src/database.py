@@ -6,7 +6,14 @@ from sqlalchemy.orm import sessionmaker
 Base = declarative_base()
 
 
-class HuaweiTable(Base):
+class LocationTable(object):
+    lat = Column(Float, nullable=True)
+    lon = Column(Float, nullable=True)
+    speed = Column(Float, nullable=True)
+    elevation = Column(Float, nullable=True)
+
+
+class HuaweiTable(LocationTable, Base):
 
     __tablename__ = 'huawei'
 
@@ -19,13 +26,6 @@ class HuaweiTable(Base):
     connect6 = Column(String)
     connect4 = Column(String)
     timestamp = Column(DateTime, default=datetime.now)
-
-
-class LocationTable(object):
-    lat = Column(Float, nullable=True)
-    lon = Column(Float, nullable=True)
-    speed = Column(Float, nullable=True)
-    elevation = Column(Float, nullable=True)
 
 
 class UDPBaseTable(object):
