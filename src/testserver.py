@@ -2,7 +2,7 @@
 # encoding: utf-8
 
 
-from probes import tcp, udp
+import servers
 import logging
 import logger_utils
 import argparse
@@ -12,8 +12,8 @@ logging.getLogger().addFilter(logger_utils.Unique())
 
 
 def main(address, port):
-    t = tcp.TCPServer(address, port)
-    u = udp.UDPServer(address, port)
+    t = servers.TCPServer(address, port)
+    u = servers.UDPServer(address, port)
     t.start()
     u.start()
     t.join()

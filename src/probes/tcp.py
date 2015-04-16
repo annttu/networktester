@@ -6,7 +6,6 @@ import time
 from location import locator
 import logging
 import logger_utils
-from probes.probe import ClientConnection
 
 logger = logging.getLogger("TCP")
 logger.addFilter(logger_utils.Unique())
@@ -128,99 +127,3 @@ class TCPClient(probe.ProbeClient):
             logger.exception("Cannot connect to server %s:%s" % (self.address, self.port))
         self.save_status("CONNECT", 0.0)
 
-
-class TCPServer(probe.ProbeServer):
-    def _init_connection(self):
-        if self.socket:
-            return
-        while not self.socket:
-            logger.info("Trying to bind")
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            try:
-                self.socket.bind((self.address, self.port))
-            except (socket.gaierror, OSError):
-                logger.error("Cannot bind to %s:%s" % (self.address, self.port))
-                self.socket = None
-                time.sleep(5)
-                continue
-            try:
-                self.socket.listen(5)
-            except (socket.gaierror, OSError):
-                logger.error("Cannot listen on bind address")
-                self.socket = None
-                time.sleep(5)
-                continue
-        logger.info("Bind successfully, listening on %s:%s" % (self.address, self.port))
-
-    def handle(self, msg, source):
-        try:
-            tmp_msg = msg.decode("utf-8")
-        except UnicodeDecodeError:
-            logger.error("Got message '%s' with invalid encoding from %s!" % (msg, source.source))
-            return
-        if not tmp_msg.endswith('\x00'):
-            logger.error("Got not null terminated message from %s!" % (source.source,))
-            return
-        logger.debug("Got message '%s' from %s" % (logger_utils.safe_encode(tmp_msg[:-1]), source.source))
-        try:
-            # Send message back
-            l = source.conn.send(msg)
-            if l == len(msg):
-                return True
-            else:
-                logger.error("Length of send message too short, connection closed?")
-                self.close_connection(source)
-        except socket.gaierror:
-            logger.exception("Cannot send response to %s" % (source.source,))
-            self.close_connection(source)
-            return
-
-    def mainloop(self):
-        x = [x.conn for x in self.connections] + [self.socket]
-        rlist, wlist, xlist = select.select(x, [], x)
-        for conn in rlist:
-            if conn == self.socket:
-                conn, address = self.socket.accept()
-                c = ClientConnection(conn, address)
-                self.connections.append(c)
-            else:
-                # Find connection
-                connection = None
-                for x in self.connections:
-                    if conn == x.conn:
-                        connection = x
-                        break
-
-                if not connection:
-                    logger.error("BUG: Cannot find connection from connections!")
-                    continue
-                try:
-                    msg = conn.recv(1024)
-                except (socket.gaierror, OSError, socket.error):
-                    logger.exception("Failed to receive message from %s" % (connection.source,))
-                    self.close_connection(connection)
-                    continue
-                if len(msg) == 0:
-                    logger.error("Got zero length message from %s!" % (connection.source,))
-                    self.close_connection(connection)
-                    continue
-                else:
-                    self.handle(msg, connection)
-
-        for conn in xlist:
-            if  conn == self.socket:
-                logger.error("Exception occurred in socket, reconnecting")
-                for connection in self.connections:
-                    self.close_connection(connection)
-                self.socket = None
-                self._init_connection()
-            else:
-                for x in self.connections:
-                    if conn == x.conn:
-                        connection = x
-                        break
-
-                if not connection:
-                    logger.error("BUG: Cannot find connection from connections!")
-                    continue
-                self.close_connection(connection)

@@ -5,7 +5,6 @@ from probes import probe
 import time
 import logging
 import logger_utils
-from probes.probe import ClientConnection
 import location
 
 logger = logging.getLogger("UDP")
@@ -127,58 +126,4 @@ class UDPClient(probe.ProbeClient):
         self.save_status("RECONNECT", 0.0)
         self.connection = None
         self.connect()
-
-
-class UDPServer(probe.ProbeServer):
-    def _init_connection(self):
-        if self.socket:
-            return
-        while not self.socket:
-            logger.info("Trying to bind")
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            try:
-                self.socket.bind((self.address, self.port))
-            except (socket.gaierror, OSError):
-                logger.error("Cannot bind to %s:%s" % (self.address, self.port))
-                self.socket = None
-                time.sleep(5)
-                continue
-        logger.info("Bind successfully, listening on %s:%s" % (self.address, self.port))
-
-    def handle(self, msg, source):
-        try:
-            tmp_msg = msg.decode("utf-8")
-        except UnicodeDecodeError:
-            logger.error("Got message '%s' with invalid encoding from %s!" % (msg, source.source))
-            return
-        if not tmp_msg.endswith('\x00'):
-            logger.error("Got not null terminated message from %s!" % (source.source,))
-            return
-        logger.debug("Got message '%s' from %s" % (logger_utils.safe_encode(tmp_msg[:-1]), source.source))
-        try:
-            # Send message back
-            l = source.conn.sendto(msg, (source.source, source.port))
-            if l == len(msg):
-                return True
-            else:
-                logger.error("Length of send message too short, connection closed?")
-                self.close_connection(source)
-        except socket.gaierror:
-            logger.exception("Cannot send response to %s" % (source.source,))
-            self.close_connection(source)
-            return
-
-    def mainloop(self):
-        rlist, wlist, xlist = select.select([self.socket], [], [self.socket])
-        for conn in rlist:
-            try:
-                msg, addr = conn.recvfrom(1024)
-            except (socket.gaierror, OSError, socket.error):
-                logger.exception("Failed to receive message from %s" % (addr[0],))
-                continue
-            if len(msg) == 0:
-                logger.error("Got zero length message from %s!" % (addr[0],))
-                continue
-            else:
-                self.handle(msg, ClientConnection(self.socket, addr))
 
