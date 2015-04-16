@@ -5,8 +5,8 @@ import time
 import database
 
 from probes import tcp, udp
+import location
 import logging
-
 
 def maintcp(address, port):
     t = tcp.TCPClient(address, port)
@@ -37,10 +37,16 @@ if __name__ == '__main__':
     logging.basicConfig(level=level, filename=args.logfile, format='%(asctime)s %(levelname)s %(name)s: %(message)s',
                         datefmt='%d.%m.%Y %H:%M:%S')
 
+    # Init engine
+
     logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
     logging.getLogger('sqlalchemy.engine.base.Engine').setLevel(logging.WARN)
     database.DB.connect()
     database.DB.create_tables()
+
+    # Start locator
+
+    location.start()
 
     if args.type == 'tcp':
         maintcp(address=args.server, port=args.port)

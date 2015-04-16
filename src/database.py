@@ -21,22 +21,44 @@ class HuaweiTable(Base):
     timestamp = Column(DateTime, default=datetime.now)
 
 
-class UDPTable(Base):
+class LocationTable(object):
+    lat = Column(Float, nullable=True)
+    lon = Column(Float, nullable=True)
+    speed = Column(Float, nullable=True)
+    elevation = Column(Float, nullable=True)
+
+
+class UDPBaseTable(object):
+
+
+    id = Column(Integer, primary_key=True, nullable=False)
+    status = Column(String, nullable=False)
+    value = Column(Float, nullable=False)
+    timestamp = Column(DateTime, default=datetime.now)
+
+
+class UDPTable(UDPBaseTable, Base):
     __tablename__ = 'udp'
 
+
+class UDPCoordTable(LocationTable, UDPBaseTable, Base):
+    __tablename__ = 'udp_coords'
+
+
+class TCPBaseTable(object):
+
     id = Column(Integer, primary_key=True, nullable=False)
     status = Column(String, nullable=False)
     value = Column(Float, nullable=False)
     timestamp = Column(DateTime, default=datetime.now)
 
 
-class TCPTable(Base):
+class TCPTable(TCPBaseTable, Base):
     __tablename__ = 'tcp'
 
-    id = Column(Integer, primary_key=True, nullable=False)
-    status = Column(String, nullable=False)
-    value = Column(Float, nullable=False)
-    timestamp = Column(DateTime, default=datetime.now)
+
+class TCPCoordTable(LocationTable, TCPBaseTable, Base):
+    __tablename__ = 'tcp_coords'
 
 
 class DB(object):

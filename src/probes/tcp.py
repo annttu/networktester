@@ -3,7 +3,7 @@ import select
 from probes import probe
 import database
 import time
-
+from location import locator
 import logging
 import logger_utils
 from probes.probe import ClientConnection
@@ -20,10 +20,15 @@ class TCPClient(probe.ProbeClient):
         self.connect()
 
     def save_status(self, status, value):
+        l = locator.get_location()
         s = database.DB.get_session()
-        t = database.TCPTable()
+        t = database.TCPCoordTable()
         t.status = status
         t.value = value
+        t.elevation = l.ele
+        t.lat = l.lat
+        t.lon = l.lon
+        t.speed = l.speed
         s.add(t)
         s.commit()
         s.close()

@@ -6,6 +6,7 @@ import time
 import logging
 import logger_utils
 from probes.probe import ClientConnection
+import location
 
 logger = logging.getLogger("UDP")
 logger.addFilter(logger_utils.Unique())
@@ -28,10 +29,15 @@ class UDPClient(probe.ProbeClient):
         self.save_status("CONNECT", 0.0)
 
     def save_status(self, status, value):
+        l = location.locator.get_location()
         s = database.DB.get_session()
-        t = database.UDPTable()
+        t = database.UDPCoordTable()
         t.status = status
         t.value = value
+        t.elevation = l.ele
+        t.lat = l.lat
+        t.lon = l.lon
+        t.speed = l.speed
         s.add(t)
         s.commit()
         s.close()
