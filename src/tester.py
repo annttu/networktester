@@ -7,6 +7,7 @@ import database
 from probes import tcp, udp, huawei
 import location
 import logging
+import submitter
 
 
 def maintcp(address, port):
@@ -29,12 +30,19 @@ def mainhuawei(address):
         time.sleep(5)
         t.test()
 
+def mainstats():
+    t = submitter.Submitter()
+    t.start()
+    while t.is_alive():
+        time.sleep(5)
+
+
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
     p.add_argument("-s", '--server', help="Server address", default="0.0.0.0")
     p.add_argument('-p', '--port', help="Server port", default=5555, type=int)
     p.add_argument('-l', '--logfile', help="logfile", default=None)
-    p.add_argument('-t', '--type', help="Type", default="tcp", choices=['tcp', 'udp', 'huawei'])
+    p.add_argument('-t', '--type', help="Type", default="tcp", choices=['tcp', 'udp', 'huawei', 'statistics'])
     p.add_argument('-d', '--debug', help="Debug", default=False, action="store_true")
 
     args = p.parse_args()
@@ -65,8 +73,11 @@ if __name__ == '__main__':
         elif args.type == 'huawei':
             mainhuawei(address=args.server)
 
-        else:
+        elif args.type == 'udp':
             mainudp(address=args.server, port=args.port)
+
+        else:
+            mainstats()
 
     except:
         location.stop()

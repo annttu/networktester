@@ -26,6 +26,7 @@ class ProbeClient(object):
         self.port = port
         self.connection = None
         self.timeout = timeout
+        self.last_ok = None
         self.connect()
 
     @abc.abstractmethod
@@ -72,7 +73,6 @@ class ProbeServer(threading.Thread):
 
     def stop(self):
         self._stop = True
-
 
     def run(self):
         self._init_connection()

@@ -1,5 +1,6 @@
+import configuration
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, DateTime, Float, create_engine
+from sqlalchemy import Column, Integer, String, DateTime, Float, create_engine, Boolean
 from datetime import datetime
 from sqlalchemy.orm import sessionmaker
 
@@ -11,11 +12,13 @@ class LocationTable(object):
     lon = Column(Float, nullable=True)
     speed = Column(Float, nullable=True)
     elevation = Column(Float, nullable=True)
+    reported = Column(Boolean, nullable=False, default=False)
 
 
 class HuaweiTable(LocationTable, Base):
 
-    __tablename__ = 'huawei'
+    __tablename__ = '%shuawei_%s' % (configuration.table_prefix,
+                                  configuration.table_suffix,)
 
     id = Column(Integer, primary_key=True, nullable=False)
     wifi = Column(String)
@@ -42,7 +45,8 @@ class UDPTable(UDPBaseTable, Base):
 
 
 class UDPCoordTable(LocationTable, UDPBaseTable, Base):
-    __tablename__ = 'udp_coords'
+    __tablename__ = '%sudp_%s' % (configuration.table_prefix,
+                                  configuration.table_suffix,)
 
 
 class TCPBaseTable(object):
@@ -58,7 +62,8 @@ class TCPTable(TCPBaseTable, Base):
 
 
 class TCPCoordTable(LocationTable, TCPBaseTable, Base):
-    __tablename__ = 'tcp_coords'
+    __tablename__ = '%stcp_%s' % (configuration.table_prefix,
+                                  configuration.table_suffix,)
 
 
 class DB(object):
@@ -68,7 +73,11 @@ class DB(object):
     def connect(self):
         if self._engine:
             return
-        self._engine = create_engine('postgresql://networktester:networktestser@localhost/networktester', echo=False)
+        self._engine = create_engine('postgresql://%s:%s@%s/%s' % (configuration.database_username,
+                                                                   configuration.database_password,
+                                                                   configuration.database_hostname,
+                                                                   configuration.database_database),
+                                     echo=False)
 
     def get_session(self):
         self.connect()

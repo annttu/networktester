@@ -6,6 +6,7 @@ import time
 import logging
 import logger_utils
 import location
+from datetime import datetime
 
 logger = logging.getLogger("UDP")
 logger.addFilter(logger_utils.Unique())
@@ -91,8 +92,6 @@ class UDPClient(probe.ProbeClient):
         self.connect()
         if self.connection:
 
-            # TODO: Clear receive buffer first?
-
             while True:
                 if self.get_responses() is None:
                     break
@@ -114,12 +113,21 @@ class UDPClient(probe.ProbeClient):
             # Ok message send, let's wait for response
             rx, wx, tx = select.select([self.connection], [], [], self.timeout)
             if len(rx) == 0:
-                logger.error("Didn't receive reply from server in %s seconds" % self.timeout)
+                if self.last_ok:
+                    time_since = (self.last_ok - datetime.now()).seconds
+                else:
+                    time_since = self.timeout
+                logger.error("Didn't receive reply from server in %s seconds" % time_since)
+                if time_since > 120:
+                    self.reconnect()
                 return
 
+            # TODO: check response!
             while True:
                 if self.get_responses() is None:
                     break
+
+            self.last_ok = datetime.now()
 
     def reconnect(self):
         logger.info("Reconnecting to %s:%s" % (self.address, self.port))
