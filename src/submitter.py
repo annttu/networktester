@@ -28,6 +28,7 @@ class Submitter(threading.Thread):
         self._stopped = False
         self.s = requests.Session()
         self.s.headers.update(headers)
+        self.verify = configuration.submit_verify_ssl
         self.submit_url = "%s/api/import/?key=%s" % (configuration.submit_url.rstrip("/"), configuration.submit_key)
 
     def stop(self):
@@ -57,7 +58,7 @@ class Submitter(threading.Thread):
             # send only if enough
             return
         # send data to server
-        response = self.s.post(self.submit_url, data=json.dumps(data))
+        response = self.s.post(self.submit_url, data=json.dumps(data), verify=self.verify)
         if response.status_code == 200:
             for i in tcp_rows:
                 i.reported=True

@@ -10,6 +10,7 @@ database_database = 'networktester'
 
 submit_url = "http://localhost:8080/"
 submit_key = "foobarasdf"
+submit_verify_ssl = True
 
 version = 0.1
 
