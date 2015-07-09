@@ -77,7 +77,7 @@ class DB(object):
                                                                    configuration.database_password,
                                                                    configuration.database_hostname,
                                                                    configuration.database_database),
-                                     echo=False, pool_recycle=1000, pool_size=2)
+                                     echo=False, pool_recycle=1000, pool_size=2, timeout=120)
 
     def get_session(self):
         self.connect()
