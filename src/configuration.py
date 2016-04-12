@@ -3,6 +3,7 @@
 table_prefix = ''
 table_suffix = 'coords'
 
+database_postgresql = False
 database_username = 'networktester'
 database_password = 'networktestser'
 database_hostname = 'localhost'

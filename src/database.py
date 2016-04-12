@@ -73,11 +73,14 @@ class DB(object):
     def connect(self):
         if self._engine:
             return
-        self._engine = create_engine('postgresql://%s:%s@%s/%s' % (configuration.database_username,
+        if configuration.database_postgresql:
+            self._engine = create_engine('postgresql://%s:%s@%s/%s' % (configuration.database_username,
                                                                    configuration.database_password,
                                                                    configuration.database_hostname,
                                                                    configuration.database_database),
                                      echo=False, pool_recycle=1000, pool_size=2)
+        else:
+            self._engine = create_engine('sqlite:///networktester.db')
 
     def get_session(self):
         self.connect()
