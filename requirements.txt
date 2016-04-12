@@ -1,3 +1,2 @@
 SQLAlchemy==0.9.9
-psycopg2==2.6
 requests==2.6.0
